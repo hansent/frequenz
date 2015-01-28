@@ -15,10 +15,16 @@ body {
 }
 
 
-div {
+.simple{
 	height: 20px;
 	width: 100%;
 	background-color: #000;
 }
 
+.bins{
+	margin-top: 2em;
+	height: 400px;
+	width: 100%;
+	background-color: #eee;
+}
 

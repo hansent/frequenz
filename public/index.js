@@ -1,73 +1,70 @@
 var $ = require('jquery');
-
-var context = new webkitAudioContext();
-var source;
-var analyser;
-var url = 'assets/lusine.ogg';
-var array = new Array();
-var boost = 0;
-
-var request = new XMLHttpRequest();
-request.open("GET", url, true);
-request.responseType = "arraybuffer";
-
-request.onload = function() {
-	context.decodeAudioData(
-		request.response,
-		function(buffer) {
-			if(!buffer) {
-				console.error('Error decoding file data');
-				return;
-			}
-
-			sourceJs = context.createScriptProcessor(2048, 1, 1);
-			sourceJs.buffer = buffer;
-			sourceJs.connect(context.destination);
-			
-			analyser = context.createAnalyser();
-			analyser.smoothingTimeConstant = 0.6;
-			analyser.fftSize = 512;
-
-			source = context.createBufferSource();
-			source.buffer = buffer;
-			source.loop = true;
+var frequenz = require('./frequenz');
 
 
-			sourceJs.onaudioprocess = function(e) {
-				array = new Uint8Array(analyser.frequencyBinCount);
-				analyser.getByteFrequencyData(array);
-				boost = 0;
-				for (var i = 0; i < array.length; i++) {
-					boost += array[i];
-				}
-				boost = boost / array.length;
-				console.log(boost);
-				$("div").width(boost);
-
-			};
-
-
-			source.connect(analyser);
-			analyser.connect(sourceJs);
-			source.connect(context.destination);
-
-			setTimeout(function() {
-				source.start(0);
-			}, 0);
-
-			
-		},
-		function(error) {
-			console.error('Decoding error:' + error);
-		}
-		);
-};
-
-request.onerror = function() {
-	console.error('buffer: XHR error');
-};
+function simple(frequencyData){
+	sum = 0;
+	for (var i = 0; i < frequencyData.length; i++) {
+	    sum += frequencyData[i];
+	}
+	$(".simple").width(sum / frequencyData.length);
+}
 
 
 
-request.send();
+function renderBins(ctx, freq){
+	var w = ctx.canvas.width;
+	var h = ctx.canvas.height;
+
+	//clear canvas
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	ctx.clearRect(0, 0, w, h);
+
+	//set color of bars
+	ctx.translate(0,h);	
+	ctx.scale(1,-h);
+	var binWidth = w/freq.length
+
+	for(var i=0; i<freq.length; i++){
+		ctx.fillStyle = "#cccccc";
+		ctx.fillRect(1,0,binWidth-1, 1);
+		ctx.fillStyle = "#000000";
+		ctx.fillRect(1,0,binWidth-1, freq[i]/256.0);
+		ctx.translate(binWidth, 0);
+	}
+
+
+
+}
+
+
+$(function(){
+
+	var binsDiv = $(".bins");
+	var canvas = document.createElement( 'canvas' );
+	canvas.width = binsDiv.width();
+	canvas.height = binsDiv.height();
+	binsDiv.append(canvas);
+	ctx = canvas.getContext( '2d' );
+
+
+
+	//play souns and analyse audio signal as it is coming in
+	frequenz('assets/music.ogg', function(e, analyser){
+		//get frequency data / FFT output
+		var frequencyData = new Uint8Array(analyser.frequencyBinCount);
+		analyser.getByteFrequencyData(frequencyData);
+
+		//visualize / render / update graphics
+		simple(frequencyData);
+		renderBins(ctx, frequencyData);
+	});
+
+
+ })
+
+
+
+
+
 
